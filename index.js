@@ -1,21 +1,37 @@
 const WebSocket = require('ws');
+const express = require('express');
+const http = require('http');
+const bodyParser = require('body-parser');
 
 const wss = new WebSocket.Server({ port: 8080 });
 
+// Инициализация Express
+const app = express();
+const appPort = 8081;
+
+// Настраиваем middleware для парсинга JSON
+app.use(bodyParser.json());
+
+app.listen(appPort, () => {
+    console.log(`Express сервер запущен на порту ${appPort}`);
+});
+
+app.post('/send', (req, res) => {
+    const { body = {}} = req;
+
+    // Отправляем сообщение всем WebSocket клиентам
+    wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(body));
+        }
+    });
+
+    res.send('Сообщение отправлено');
+});
+
 wss.on('connection', (ws) => {
     ws.on('message', (message) => {
-        const messageObject = JSON.parse(message);
-        const { type = '' } = messageObject || {};
-
-        console.log(`Получено сообщение:`,messageObject);
-
-        if (type === 'shouldUpdate') {
-            wss.clients.forEach(client => {
-                if (client !== ws && client.readyState === WebSocket?.OPEN) {
-                    client.send(JSON.stringify({type: 'update', text: 'требуется обновление данных'}));
-                }
-            });
-        }
+      console.log('Пришло сообщение по сокетам:', message)
     });
 
     ws.on('close', () => {
